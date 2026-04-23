@@ -170,8 +170,13 @@ async function pollRoom(roomName: string, roomId: string): Promise<void> {
       if (event.type !== "m.room.message") continue;
       if (event.sender !== TRUSTED_SENDER) continue;
 
-      const body = (event.content as { body?: string })?.body;
-      if (!body) continue;
+      const rawBody = (event.content as { body?: string })?.body;
+      if (!rawBody) continue;
+
+      // Escape the closing-tag sequence so message content cannot prematurely
+      // close the <claude-channel> frame during stream parsing (defense-in-depth;
+      // the trusted-sender filter already prevents untrusted input here).
+      const body = rawBody.replace(/<\/claude-channel>/gi, "<\\/claude-channel>");
 
       // Emit as channel event — Claude Code picks this up via the channel capability
       const channelEvent = JSON.stringify({
